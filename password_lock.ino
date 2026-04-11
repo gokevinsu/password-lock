@@ -91,6 +91,7 @@ const unsigned long MSG_TIME = 2000;
 
 /* ================= SERVO ================= */
 bool servoActive = false;
+bool doorOpened  = false;  // must go HIGH (open) before we watch for close
 
 /* ================= SHOW PASSWORD ================= */
 bool showPassword = false;
@@ -137,6 +138,7 @@ void drawAdminMenu();
 
 /* ================= HELPERS ================= */
 void beepClick(int times, int duration){
+  if(!buzzerAllowed()) return;
   for(int i=0;i<times;i++){
     digitalWrite(buzzerPin,HIGH);
     delay(duration);
@@ -148,6 +150,7 @@ void beepSuccess(){ beepClick(3,100); }
 void beepFail(){    beepClick(1,400); }
 
 void keyClick(){
+  if(!buzzerAllowed()) return;
   digitalWrite(buzzerPin,HIGH);
   delay(6);
   digitalWrite(buzzerPin,LOW);
@@ -187,9 +190,17 @@ void saveAdminPIN(){
   for(byte i=0;i<4;i++) EEPROM.update(EEPROM_ADMIN_PIN+i, adminPIN[i]);
 }
 
+bool buzzerAllowed(){
+  if(!rtc_ok) return true;  // no RTC — always beep
+  DateTime now = rtc.now();
+  int h = now.hour();
+  return (h >= 7 && h < 21);  // 7:00 AM to 8:59 PM
+}
+
 void startServo(){
   lockServo.write(90);
   servoActive = true;
+  doorOpened  = false;
 }
 
 /* ================= RTC CHECK ================= */
@@ -388,10 +399,15 @@ void setup(){
 void loop(){
   unsigned long nowMs = millis();
 
-  // SERVO — lock when door closes (magnet detected = LOW)
-  if(servoActive && digitalRead(reedSwitchPin)==LOW){
-    lockServo.write(0);
-    servoActive = false;
+  // SERVO — wait for door to open, then lock when it closes
+  if(servoActive){
+    bool magnet = digitalRead(reedSwitchPin)==HIGH;  // HIGH = magnet present = closed
+    if(!magnet) doorOpened = true;          // door has opened (magnet gone)
+    if(doorOpened && magnet){               // door opened then closed again
+      lockServo.write(0);
+      servoActive = false;
+      doorOpened  = false;
+    }
   }
 
   // MESSAGE TIMER
