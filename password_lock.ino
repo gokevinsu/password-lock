@@ -50,9 +50,10 @@ const char* menuItems[] = {
   "Clear Logs",
   "Export Logs",
   "Set RTC",
-  "Change User PIN"
+  "Change User PIN",
+  "Exit Menu"
 };
-const byte MENU_ITEM_COUNT = 4;
+const byte MENU_ITEM_COUNT = 5;
 byte menuIndex = 0;
 
 // Joystick state
@@ -60,6 +61,11 @@ bool joystickMoved       = false;
 bool joystickBtnLast     = HIGH;
 unsigned long joystickBtnTime = 0;
 const unsigned long BTN_DEBOUNCE = 50;
+
+/* ================= LONG PRESS (A key) ================= */
+unsigned long aPressStart       = 0;
+bool          aHeld             = false;
+const unsigned long A_LONG_PRESS = 1500;
 
 /* ================= MODES ================= */
 enum Mode {
@@ -519,6 +525,11 @@ void loop(){
           lcd.clear();
           lcd.print("New User PIN:");
           break;
+        case 4: // Exit Menu
+          mode = MODE_USER;
+          lcd.clear();
+          lcd.print("Enter Password:");
+          break;
       }
     }
     joystickBtnLast = btnNow;
@@ -535,6 +546,27 @@ void loop(){
         delay(200);
       }
     }
+  }
+
+  // ===== LONG PRESS TRACKING FOR A =====
+  if(key=='A' && mode!=MODE_ADMIN_MENU && mode!=MODE_ADMIN_UNLOCK){
+    if(!aHeld){
+      aHeld      = true;
+      aPressStart = nowMs;
+    } else if(nowMs - aPressStart >= A_LONG_PRESS){
+      // Long press confirmed — enter admin unlock
+      aHeld = false;
+      if(lockedOut || mode==MODE_USER){
+        mode = MODE_ADMIN_UNLOCK;
+        clearBuf(input, inputLen);
+        lcd.clear();
+        lcd.print("Admin PIN:");
+        beepClick(2, 50);
+      }
+    }
+    return;  // don't process A as a normal key
+  } else if(key!='A'){
+    aHeld = false;  // released or different key — reset
   }
 
   if(!key) return;
@@ -580,17 +612,8 @@ void loop(){
     }
   }
 
-  // LOCKOUT gate
-  if(lockedOut && mode!=MODE_ADMIN_UNLOCK && key!='B') return;
-
-  // ADMIN UNLOCK trigger
-  if(key=='B' && mode!=MODE_ADMIN_MENU){
-    mode = MODE_ADMIN_UNLOCK;
-    clearBuf(input, inputLen);
-    lcd.clear();
-    lcd.print("Admin PIN:");
-    return;
-  }
+  // LOCKOUT gate — blocks all keypad input when locked out
+  if(lockedOut && mode!=MODE_ADMIN_UNLOCK) return;
 
   // ADMIN UNLOCK MODE
   if(mode==MODE_ADMIN_UNLOCK){
@@ -799,15 +822,6 @@ void loop(){
     clearBuf(input, inputLen);
     showMessage = !lockedOut;
     msgStart    = nowMs;
-    return;
-  }
-
-  if(key=='A'){
-    mode       = MODE_CHANGE_PIN;
-    changeStep = STEP_OLD;
-    clearBuf(input, inputLen);
-    lcd.clear();
-    lcd.print("Old PIN:");
     return;
   }
 
