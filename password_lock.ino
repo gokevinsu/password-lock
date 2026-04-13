@@ -625,9 +625,8 @@ void loop(){
         clearLockout();
         startServo();
         beepSuccess();
-        mode      = MODE_ADMIN_MENU;
-        menuIndex = 0;
-        drawAdminMenu();
+        mode = MODE_USER;
+        lcd.print("Enter Password:");
       } else {
         lcd.print("BAD ADMIN PIN");
         beepFail();
