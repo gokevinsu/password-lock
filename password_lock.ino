@@ -567,6 +567,8 @@ void loop(){
     return;  // don't process A as a normal key
   } else if(key!='A'){
     aHeld = false;  // released or different key — reset
+  } else {
+    return;  // key=='A' in admin menu/unlock — swallow it
   }
 
   if(!key) return;
