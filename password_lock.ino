@@ -672,13 +672,7 @@ void loop(){
   // RTC SET MODE
   if(mode==MODE_SET_RTC){
     if(key=='#'){
-      if(rtcStep==RTC_YEAR)   { rtcYear  = atoi(input)+2000; rtcStep=RTC_MONTH;   }
-      else if(rtcStep==RTC_MONTH) { rtcMonth = atoi(input);  rtcStep=RTC_DAY;     }
-      else if(rtcStep==RTC_DAY)   { rtcDay   = atoi(input);  rtcStep=RTC_HOUR;    }
-      else if(rtcStep==RTC_HOUR)  { rtcHour  = atoi(input);  rtcStep=RTC_MIN;     }
-      else if(rtcStep==RTC_MIN)   { rtcMin   = atoi(input);  rtcStep=RTC_SEC;     }
-      else if(rtcStep==RTC_SEC)   { rtcSec   = atoi(input);  rtcStep=RTC_CONFIRM; }
-      else if(rtcStep==RTC_CONFIRM){
+      if(rtcStep==RTC_CONFIRM){
         rtc.adjust(DateTime(rtcYear,rtcMonth,rtcDay,rtcHour,rtcMin,rtcSec));
         lcd.clear();
         lcd.print("RTC SET OK");
@@ -689,6 +683,35 @@ void loop(){
         rtcStep     = RTC_NONE;
         return;
       }
+
+      int val = atoi(input);
+      bool valid = (inputLen > 0);
+      if(valid){
+        if     (rtcStep==RTC_YEAR)  valid = (val >= 0 && val <= 99);
+        else if(rtcStep==RTC_MONTH) valid = (val >= 1 && val <= 12);
+        else if(rtcStep==RTC_DAY)   valid = (val >= 1 && val <= 31);
+        else if(rtcStep==RTC_HOUR)  valid = (val >= 0 && val <= 23);
+        else if(rtcStep==RTC_MIN)   valid = (val >= 0 && val <= 59);
+        else if(rtcStep==RTC_SEC)   valid = (val >= 0 && val <= 59);
+      }
+
+      if(!valid){
+        lcd.clear();
+        lcd.print("Invalid value");
+        beepFail();
+        delay(800);
+        showRTCStep(rtcStep);
+        clearBuf(input, inputLen);
+        return;
+      }
+
+      if     (rtcStep==RTC_YEAR)  { rtcYear  = val+2000; rtcStep=RTC_MONTH;   }
+      else if(rtcStep==RTC_MONTH) { rtcMonth = val;      rtcStep=RTC_DAY;     }
+      else if(rtcStep==RTC_DAY)   { rtcDay   = val;      rtcStep=RTC_HOUR;    }
+      else if(rtcStep==RTC_HOUR)  { rtcHour  = val;      rtcStep=RTC_MIN;     }
+      else if(rtcStep==RTC_MIN)   { rtcMin   = val;      rtcStep=RTC_SEC;     }
+      else if(rtcStep==RTC_SEC)   { rtcSec   = val;      rtcStep=RTC_CONFIRM; }
+
       showRTCStep(rtcStep);
       clearBuf(input, inputLen);
       return;
