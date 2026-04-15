@@ -57,10 +57,14 @@ const byte MENU_ITEM_COUNT = 5;
 byte menuIndex = 0;
 
 // Joystick state
-bool joystickMoved       = false;
-bool joystickBtnLast     = HIGH;
-unsigned long joystickBtnTime = 0;
-const unsigned long BTN_DEBOUNCE = 50;
+bool joystickMoved               = false;
+bool joystickBtnLast             = HIGH;
+unsigned long joystickBtnTime    = 0;
+unsigned long joystickHoldStart  = 0;
+unsigned long joystickScrollTime = 0;
+const unsigned long BTN_DEBOUNCE          = 50;
+const unsigned long SCROLL_INITIAL_DELAY  = 500;
+const unsigned long SCROLL_REPEAT_INTERVAL = 150;
 
 /* ================= LONG PRESS (A key) ================= */
 unsigned long aPressStart       = 0;
@@ -459,34 +463,43 @@ void loop(){
   if(mode==MODE_ADMIN_MENU){
     int xVal = analogRead(joystickX);
 
-    // Scroll right
-    if(xVal > 700 && !joystickMoved){
-      joystickMoved = true;
-      byte next  = (menuIndex+1) % MENU_ITEM_COUNT;
-      byte tries = 0;
-      while(tries < MENU_ITEM_COUNT){
-        if(next==2 && !rtc_ok){ next=(next+1)%MENU_ITEM_COUNT; tries++; continue; }
-        break;
+    if(xVal > 700 || xVal < 300){
+      bool doScroll = false;
+      if(!joystickMoved){
+        joystickMoved      = true;
+        joystickHoldStart  = nowMs;
+        joystickScrollTime = nowMs;
+        doScroll = true;
+      } else if(nowMs - joystickHoldStart  >= SCROLL_INITIAL_DELAY &&
+                nowMs - joystickScrollTime >= SCROLL_REPEAT_INTERVAL){
+        joystickScrollTime = nowMs;
+        doScroll = true;
       }
-      menuIndex = next;
-      drawAdminMenu();
-      beepClick(1,20);
-    }
-    // Scroll left
-    else if(xVal < 300 && !joystickMoved){
-      joystickMoved = true;
-      byte prev  = (menuIndex+MENU_ITEM_COUNT-1) % MENU_ITEM_COUNT;
-      byte tries = 0;
-      while(tries < MENU_ITEM_COUNT){
-        if(prev==2 && !rtc_ok){ prev=(prev+MENU_ITEM_COUNT-1)%MENU_ITEM_COUNT; tries++; continue; }
-        break;
+
+      if(doScroll){
+        if(xVal > 700){
+          byte next  = (menuIndex+1) % MENU_ITEM_COUNT;
+          byte tries = 0;
+          while(tries < MENU_ITEM_COUNT){
+            if(next==2 && !rtc_ok){ next=(next+1)%MENU_ITEM_COUNT; tries++; continue; }
+            break;
+          }
+          menuIndex = next;
+        } else {
+          byte prev  = (menuIndex+MENU_ITEM_COUNT-1) % MENU_ITEM_COUNT;
+          byte tries = 0;
+          while(tries < MENU_ITEM_COUNT){
+            if(prev==2 && !rtc_ok){ prev=(prev+MENU_ITEM_COUNT-1)%MENU_ITEM_COUNT; tries++; continue; }
+            break;
+          }
+          menuIndex = prev;
+        }
+        drawAdminMenu();
+        beepClick(1,20);
       }
-      menuIndex = prev;
-      drawAdminMenu();
-      beepClick(1,20);
     }
     // Stick returned to centre — allow next move
-    else if(xVal>=300 && xVal<=700){
+    else {
       joystickMoved = false;
     }
 
