@@ -1,0 +1,22 @@
+
+hold A in admin mode ➡ stop beeping (annoying)
+admin pin after lockout ➡ no admin menu
+make sure only valid rtc times are entered
+allow continuous scrolling in admin menu
+won't allow a pin that is less than 4 digits
+when the servo locks, exit admin menu
+add a rgb led (R:A0, G:A1, B:A2) that blinks yellow (short) when a key is pressed (when the buzzer beeps once), blinks red (short) when user pin is failed, blinks red (long) failed admin or lockout, and blinks green (medium) when a pin is correct or saved
+move joystick to A3
+add joystick-driven sub-menu in admin menu called "settings" with:
+	set rtc 
+	change beep allowance window
+	change A press duration for enter admin menu
+	change message timer
+log (to EEPROM):
+	admin pin change
+	user pin change
+	lockout
+	admin fail
+	user fail
+	inside unlocks
+	rtc set
