@@ -93,6 +93,7 @@ char tempNewPIN[5]; byte tempNewLen = 0;
 byte attempts = 0;
 const byte MAX_ATTEMPTS = 3;
 bool lockedOut = false;
+bool adminFromLockout = false;  // true when admin mode entered during lockout
 
 /* ================= MESSAGE ================= */
 bool showMessage = false;
@@ -570,6 +571,7 @@ void loop(){
       // Long press confirmed — enter admin unlock
       aHeld = false;
       if(lockedOut || mode==MODE_USER){
+        adminFromLockout = lockedOut;
         mode = MODE_ADMIN_UNLOCK;
         clearBuf(input, inputLen);
         lcd.clear();
@@ -636,10 +638,16 @@ void loop(){
       lcd.clear();
       if(strcmp(input,adminPIN)==0){
         clearLockout();
-        startServo();
         beepSuccess();
-        mode = MODE_USER;
-        lcd.print("Enter Password:");
+        if(adminFromLockout){
+          startServo();
+          mode = MODE_USER;
+          lcd.print("Enter Password:");
+        } else {
+          mode      = MODE_ADMIN_MENU;
+          menuIndex = 0;
+          drawAdminMenu();
+        }
       } else {
         lcd.print("BAD ADMIN PIN");
         beepFail();
