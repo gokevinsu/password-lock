@@ -418,6 +418,11 @@ void loop(){
       lockServo.write(0);
       servoActive = false;
       doorOpened  = false;
+      if(mode == MODE_ADMIN_MENU){
+        mode = MODE_USER;
+        lcd.clear();
+        lcd.print("Enter Password:");
+      }
     }
   }
 
