@@ -806,12 +806,21 @@ void loop(){
         }
       }
       else if(changeStep==STEP_NEW){
-        strcpy(tempNewPIN, input);
-        tempNewLen = inputLen;
-        clearBuf(input, inputLen);
-        changeStep = STEP_CONFIRM;
-        lcd.clear();
-        lcd.print("Confirm PIN:");
+        if(inputLen==4){
+          strcpy(tempNewPIN, input);
+          tempNewLen = inputLen;
+          clearBuf(input, inputLen);
+          changeStep = STEP_CONFIRM;
+          lcd.clear();
+          lcd.print("Confirm PIN:");
+        } else {
+          lcd.clear();
+          lcd.print("Need 4 digits");
+          beepFail();
+          clearBuf(input, inputLen);
+          showMessage = true;
+          msgStart    = nowMs;
+        }
       }
       else if(changeStep==STEP_CONFIRM){
         if(strcmp(input,tempNewPIN)==0){
