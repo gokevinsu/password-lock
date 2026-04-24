@@ -15,9 +15,12 @@ Servo lockServo;
 const int servoPin        = 8;
 const int buzzerPin       = 13;
 const int insideButtonPin = 10;
-const int joystickX       = A2;
+const int joystickX       = A3;
 const int joystickBtn     = 9;
 const int reedSwitchPin   = 11;  // LOW = magnet present (door closed)
+const int ledR            = A0;
+const int ledG            = A1;
+const int ledB            = A2;
 
 /* ================= EEPROM MAP ================= */
 #define EEPROM_USER_PIN     0
@@ -99,6 +102,12 @@ bool adminFromLockout = false;  // true when admin mode entered during lockout
 bool showMessage = false;
 unsigned long msgStart = 0;
 const unsigned long MSG_TIME = 2000;
+
+/* ================= RGB LED ================= */
+unsigned long ledOffTime = 0;
+const unsigned long LED_SHORT  =  80;
+const unsigned long LED_MEDIUM = 300;
+const unsigned long LED_LONG   = 600;
 
 /* ================= SERVO ================= */
 bool servoActive = false;
@@ -206,6 +215,18 @@ bool buzzerAllowed(){
   DateTime now = rtc.now();
   int h = now.hour();
   return (h >= 7 && h < 21);  // 7:00 AM to 8:59 PM
+}
+
+void ledOn(bool r, bool g, bool b, unsigned long duration){
+  digitalWrite(ledR, r ? HIGH : LOW);
+  digitalWrite(ledG, g ? HIGH : LOW);
+  digitalWrite(ledB, b ? HIGH : LOW);
+  ledOffTime = millis() + duration;
+}
+void ledOff(){
+  digitalWrite(ledR, LOW);
+  digitalWrite(ledG, LOW);
+  digitalWrite(ledB, LOW);
 }
 
 void startServo(){
@@ -376,7 +397,10 @@ void setup(){
   pinMode(insideButtonPin, INPUT_PULLUP);
   pinMode(joystickBtn,     INPUT_PULLUP);
   pinMode(reedSwitchPin,   INPUT_PULLUP);
-  // joystickX (A2) is analog — no pinMode needed
+  pinMode(ledR,            OUTPUT);
+  pinMode(ledG,            OUTPUT);
+  pinMode(ledB,            OUTPUT);
+  // joystickX (A3) is analog — no pinMode needed
 
   if(EEPROM.read(EEPROM_MAGIC) != EEPROM_MAGIC_VAL){
     EEPROM.update(EEPROM_MAGIC,      EEPROM_MAGIC_VAL);
@@ -409,6 +433,9 @@ void setup(){
 /* ================= LOOP ================= */
 void loop(){
   unsigned long nowMs = millis();
+
+  // LED off timer
+  if(ledOffTime && nowMs >= ledOffTime){ ledOff(); ledOffTime = 0; }
 
   // SERVO — wait for door to open, then lock when it closes
   if(servoActive){
@@ -593,6 +620,7 @@ void loop(){
 
   if(!key) return;
   keyClick();
+  ledOn(true, true, false, LED_SHORT);  // yellow — key pressed
 
   // D always cancels back to user screen
   if(key=='D'){
@@ -630,6 +658,7 @@ void loop(){
       lcd.clear();
       lcd.print("LOCKOUT");
       beepFail();
+      ledOn(true, false, false, LED_LONG);  // red long — spam lockout
       return;
     }
   }
@@ -645,6 +674,7 @@ void loop(){
         clearLockout();
         startServo();
         beepSuccess();
+        ledOn(false, true, false, LED_MEDIUM);  // green — admin PIN correct
         if(adminFromLockout){
           mode = MODE_USER;
           lcd.print("Enter Password:");
@@ -656,6 +686,7 @@ void loop(){
       } else {
         lcd.print("BAD ADMIN PIN");
         beepFail();
+        ledOn(true, false, false, LED_LONG);  // red long — admin fail
         logEvent(EVT_ADMIN_FAIL);
         showMessage = true;
         msgStart    = nowMs;
@@ -773,6 +804,7 @@ void loop(){
           lcd.clear();
           lcd.print("PIN Saved");
           beepSuccess();
+          ledOn(false, true, false, LED_MEDIUM);  // green — PIN saved
         } else {
           lcd.clear();
           lcd.print("PIN Mismatch");
@@ -834,6 +866,7 @@ void loop(){
           lcd.clear();
           lcd.print("PIN Saved");
           beepSuccess();
+          ledOn(false, true, false, LED_MEDIUM);  // green — PIN saved
         } else {
           lcd.clear();
           lcd.print("PIN Mismatch");
@@ -864,6 +897,7 @@ void loop(){
       attempts = 0;
       saveAttempts();
       beepSuccess();
+      ledOn(false, true, false, LED_MEDIUM);  // green — PIN correct
     } else {
       attempts++;
       saveAttempts();
@@ -873,9 +907,11 @@ void loop(){
         logEvent(EVT_LOCKOUT);
         lcd.print("LOCKOUT");
         beepFail();
+        ledOn(true, false, false, LED_LONG);   // red long — lockout
       } else {
         lcd.print("Access Denied");
         beepFail();
+        ledOn(true, false, false, LED_SHORT);  // red short — wrong PIN
       }
     }
     clearBuf(input, inputLen);
