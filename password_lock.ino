@@ -643,9 +643,9 @@ void loop(){
       lcd.clear();
       if(strcmp(input,adminPIN)==0){
         clearLockout();
+        startServo();
         beepSuccess();
         if(adminFromLockout){
-          startServo();
           mode = MODE_USER;
           lcd.print("Enter Password:");
         } else {
