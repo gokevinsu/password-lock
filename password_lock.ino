@@ -105,9 +105,10 @@ const unsigned long MSG_TIME = 2000;
 
 /* ================= RGB LED ================= */
 unsigned long ledOffTime = 0;
-const unsigned long LED_SHORT  =  80;
-const unsigned long LED_MEDIUM = 300;
-const unsigned long LED_LONG   = 600;
+const unsigned long LED_KEY    =  100;  // key press flash (no blocking beep after)
+const unsigned long LED_SHORT  =  450;  // >400ms beep — brief post-beep
+const unsigned long LED_MEDIUM =  700;  // success
+const unsigned long LED_LONG   = 1200;  // serious failure
 
 /* ================= SERVO ================= */
 bool servoActive = false;
@@ -620,7 +621,7 @@ void loop(){
 
   if(!key) return;
   keyClick();
-  ledOn(true, true, false, LED_SHORT);  // yellow — key pressed
+  ledOn(true, true, false, LED_KEY);  // yellow — key pressed
 
   // D always cancels back to user screen
   if(key=='D'){
@@ -657,8 +658,8 @@ void loop(){
       logEvent(EVT_LOCKOUT);
       lcd.clear();
       lcd.print("LOCKOUT");
-      beepFail();
       ledOn(true, false, false, LED_LONG);  // red long — spam lockout
+      beepFail();
       return;
     }
   }
@@ -673,8 +674,8 @@ void loop(){
       if(strcmp(input,adminPIN)==0){
         clearLockout();
         startServo();
-        beepSuccess();
         ledOn(false, true, false, LED_MEDIUM);  // green — admin PIN correct
+        beepSuccess();
         if(adminFromLockout){
           mode = MODE_USER;
           lcd.print("Enter Password:");
@@ -685,8 +686,8 @@ void loop(){
         }
       } else {
         lcd.print("BAD ADMIN PIN");
-        beepFail();
         ledOn(true, false, false, LED_LONG);  // red long — admin fail
+        beepFail();
         logEvent(EVT_ADMIN_FAIL);
         showMessage = true;
         msgStart    = nowMs;
@@ -803,8 +804,8 @@ void loop(){
           saveUserPIN();
           lcd.clear();
           lcd.print("PIN Saved");
-          beepSuccess();
           ledOn(false, true, false, LED_MEDIUM);  // green — PIN saved
+          beepSuccess();
         } else {
           lcd.clear();
           lcd.print("PIN Mismatch");
@@ -865,8 +866,8 @@ void loop(){
           saveUserPIN();
           lcd.clear();
           lcd.print("PIN Saved");
-          beepSuccess();
           ledOn(false, true, false, LED_MEDIUM);  // green — PIN saved
+          beepSuccess();
         } else {
           lcd.clear();
           lcd.print("PIN Mismatch");
@@ -896,8 +897,8 @@ void loop(){
       startServo();
       attempts = 0;
       saveAttempts();
-      beepSuccess();
       ledOn(false, true, false, LED_MEDIUM);  // green — PIN correct
+      beepSuccess();
     } else {
       attempts++;
       saveAttempts();
@@ -906,12 +907,12 @@ void loop(){
         saveLockout(true);
         logEvent(EVT_LOCKOUT);
         lcd.print("LOCKOUT");
-        beepFail();
         ledOn(true, false, false, LED_LONG);   // red long — lockout
+        beepFail();
       } else {
         lcd.print("Access Denied");
-        beepFail();
         ledOn(true, false, false, LED_SHORT);  // red short — wrong PIN
+        beepFail();
       }
     }
     clearBuf(input, inputLen);
