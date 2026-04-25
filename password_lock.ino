@@ -105,10 +105,13 @@ const unsigned long MSG_TIME = 2000;
 
 /* ================= RGB LED ================= */
 unsigned long ledOffTime = 0;
+bool ledG_active = false;
+byte ledG_duty   = 255;  // software-PWM duty for G (0-255)
 const unsigned long LED_KEY    =  100;  // key press flash (no blocking beep after)
 const unsigned long LED_SHORT  =  450;  // >400ms beep — brief post-beep
 const unsigned long LED_MEDIUM =  700;  // success
 const unsigned long LED_LONG   = 1200;  // serious failure
+const byte LED_G_DUTY_YELLOW = 51;  // ~20% — dims G so R+G reads as yellow not green
 
 /* ================= SERVO ================= */
 bool servoActive = false;
@@ -218,16 +221,24 @@ bool buzzerAllowed(){
   return (h >= 7 && h < 21);  // 7:00 AM to 8:59 PM
 }
 
-void ledOn(bool r, bool g, bool b, unsigned long duration){
+void ledOn(bool r, bool g, bool b, unsigned long duration, byte g_duty = 255){
   digitalWrite(ledR, r ? HIGH : LOW);
-  digitalWrite(ledG, g ? HIGH : LOW);
   digitalWrite(ledB, b ? HIGH : LOW);
+  if(g && g_duty < 255){
+    ledG_active = true;
+    ledG_duty   = g_duty;
+    // G driven by software PWM in main loop
+  } else {
+    ledG_active = false;
+    digitalWrite(ledG, g ? HIGH : LOW);
+  }
   ledOffTime = millis() + duration;
 }
 void ledOff(){
   digitalWrite(ledR, LOW);
   digitalWrite(ledG, LOW);
   digitalWrite(ledB, LOW);
+  ledG_active = false;
 }
 
 void startServo(){
@@ -435,8 +446,17 @@ void setup(){
 void loop(){
   unsigned long nowMs = millis();
 
-  // LED off timer
-  if(ledOffTime && nowMs >= ledOffTime){ ledOff(); ledOffTime = 0; }
+  // LED off timer + software PWM for G
+  if(ledOffTime){
+    if(nowMs >= ledOffTime){
+      ledOff();
+      ledOffTime = 0;
+    } else if(ledG_active){
+      // ~1 kHz software PWM: 1024us period, duty in [0,1020]
+      unsigned long phase = micros() & 0x3FF;
+      digitalWrite(ledG, (phase < ((unsigned long)ledG_duty << 2)) ? HIGH : LOW);
+    }
+  }
 
   // SERVO — wait for door to open, then lock when it closes
   if(servoActive){
@@ -621,7 +641,7 @@ void loop(){
 
   if(!key) return;
   keyClick();
-  ledOn(true, true, false, LED_KEY);  // yellow — key pressed
+  ledOn(true, true, false, LED_KEY, LED_G_DUTY_YELLOW);  // yellow — key pressed
 
   // D always cancels back to user screen
   if(key=='D'){
